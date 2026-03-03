@@ -44,7 +44,7 @@ final class KeyboardShortcutsViewController: NSViewController {
 
     let nameColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name"))
     nameColumn.title = "Action"
-    nameColumn.width = 180
+    nameColumn.width = 210
     tableView.addTableColumn(nameColumn)
 
     let shortcutColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("shortcut"))

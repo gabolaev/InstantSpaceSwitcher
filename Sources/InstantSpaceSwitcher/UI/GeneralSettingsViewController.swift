@@ -1,4 +1,5 @@
 import AppKit
+import ISS
 import ServiceManagement
 
 final class GeneralSettingsViewController: NSViewController {
@@ -6,6 +7,8 @@ final class GeneralSettingsViewController: NSViewController {
     checkboxWithTitle: "Show on-screen display when switching spaces", target: nil, action: nil)
   private let osdDurationPopup = NSPopUpButton()
   private let osdDurationLabel = NSTextField(labelWithString: "Duration:")
+  private let swipeOverrideCheckbox = NSButton(
+    checkboxWithTitle: "Override 3-finger swipe for instant switching", target: nil, action: nil)
   private let launchAtLoginCheckbox = NSButton(
     checkboxWithTitle: "Launch at login", target: nil, action: nil)
 
@@ -49,12 +52,16 @@ final class GeneralSettingsViewController: NSViewController {
     osdDurationContainer.addArrangedSubview(osdDurationLabel)
     osdDurationContainer.addArrangedSubview(osdDurationPopup)
 
+    swipeOverrideCheckbox.target = self
+    swipeOverrideCheckbox.action = #selector(swipeOverrideChanged)
+
     launchAtLoginCheckbox.target = self
     launchAtLoginCheckbox.action = #selector(launchAtLoginChanged)
 
     stackView.addArrangedSubview(generalLabel)
     stackView.addArrangedSubview(showOSDCheckbox)
     stackView.addArrangedSubview(osdDurationContainer)
+    stackView.addArrangedSubview(swipeOverrideCheckbox)
     stackView.addArrangedSubview(launchAtLoginCheckbox)
 
     view.addSubview(stackView)
@@ -79,6 +86,8 @@ final class GeneralSettingsViewController: NSViewController {
 
     osdDurationPopup.isEnabled = showOSD
 
+    swipeOverrideCheckbox.state = defaults.bool(forKey: "swipeOverride") ? .on : .off
+
     launchAtLoginCheckbox.state = SMAppService.mainApp.status == .enabled ? .on : .off
   }
 
@@ -93,6 +102,12 @@ final class GeneralSettingsViewController: NSViewController {
     guard index >= 0 && index < durationPresets.count else { return }
     let duration = durationPresets[index]
     defaults.set(duration, forKey: "osdDurationMs")
+  }
+
+  @objc private func swipeOverrideChanged(_ sender: NSButton) {
+    let isEnabled = sender.state == .on
+    defaults.set(isEnabled, forKey: "swipeOverride")
+    iss_set_swipe_override(isEnabled)
   }
 
   @objc private func launchAtLoginChanged(_ sender: NSButton) {

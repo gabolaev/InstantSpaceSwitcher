@@ -19,6 +19,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       print("Failed to initialize ISS event tap")
     }
 
+    if UserDefaults.standard.bool(forKey: "swipeOverride") {
+      iss_set_swipe_override(true)
+    }
+
     setupMainMenu()
     menuBarController.delegate = self
     menuBarController.setup()

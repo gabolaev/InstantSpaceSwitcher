@@ -109,6 +109,8 @@ struct HotkeyCombination: Codable, Equatable {
     guard modifiers != 0 else { return nil }
 
     let keyCode = UInt32(event.keyCode)
+    
+    // Handle arrow keys
     if let special = event.specialKey, let symbol = arrowSymbol(for: special) {
       return HotkeyCombination(
         keyCode: keyCode,
@@ -117,8 +119,19 @@ struct HotkeyCombination: Codable, Equatable {
         keyEquivalent: arrowKeyEquivalent(special)
       )
     }
+    
+    // Handle special keys (Enter, F-keys, etc.)
+    if let (displayKey, keyEquiv) = specialKeyInfo(for: Int(event.keyCode)) {
+      return HotkeyCombination(
+        keyCode: keyCode,
+        modifiers: modifiers,
+        displayKey: displayKey,
+        keyEquivalent: keyEquiv
+      )
+    }
 
-    guard let characters = event.charactersIgnoringModifiers, let first = characters.first else {
+    guard let characters = event.charactersIgnoringModifiers, let first = characters.first,
+          first.isLetter || first.isNumber || first.isPunctuation || first.isSymbol else {
       return nil
     }
 
@@ -138,6 +151,63 @@ struct HotkeyCombination: Codable, Equatable {
     case .upArrow: return "↑"
     case .downArrow: return "↓"
     default: return nil
+    }
+  }
+  
+  private static func specialKeyInfo(for keyCode: Int) -> (displayKey: String, keyEquivalent: String)? {
+    switch keyCode {
+    // Enter/Return
+    case kVK_Return:
+      return ("↩", String(Character(UnicodeScalar(NSCarriageReturnCharacter)!)))
+    case kVK_ANSI_KeypadEnter:
+      return ("⌅", String(Character(UnicodeScalar(NSEnterCharacter)!)))
+    // Tab
+    case kVK_Tab:
+      return ("⇥", String(Character(UnicodeScalar(NSTabCharacter)!)))
+    // Delete/Backspace
+    case kVK_Delete:
+      return ("⌫", String(Character(UnicodeScalar(NSBackspaceCharacter)!)))
+    case kVK_ForwardDelete:
+      return ("⌦", String(Character(UnicodeScalar(NSDeleteCharacter)!)))
+    // Space
+    case kVK_Space:
+      return ("Space", " ")
+    // F-keys
+    case kVK_F1:
+      return ("F1", String(Character(UnicodeScalar(NSF1FunctionKey)!)))
+    case kVK_F2:
+      return ("F2", String(Character(UnicodeScalar(NSF2FunctionKey)!)))
+    case kVK_F3:
+      return ("F3", String(Character(UnicodeScalar(NSF3FunctionKey)!)))
+    case kVK_F4:
+      return ("F4", String(Character(UnicodeScalar(NSF4FunctionKey)!)))
+    case kVK_F5:
+      return ("F5", String(Character(UnicodeScalar(NSF5FunctionKey)!)))
+    case kVK_F6:
+      return ("F6", String(Character(UnicodeScalar(NSF6FunctionKey)!)))
+    case kVK_F7:
+      return ("F7", String(Character(UnicodeScalar(NSF7FunctionKey)!)))
+    case kVK_F8:
+      return ("F8", String(Character(UnicodeScalar(NSF8FunctionKey)!)))
+    case kVK_F9:
+      return ("F9", String(Character(UnicodeScalar(NSF9FunctionKey)!)))
+    case kVK_F10:
+      return ("F10", String(Character(UnicodeScalar(NSF10FunctionKey)!)))
+    case kVK_F11:
+      return ("F11", String(Character(UnicodeScalar(NSF11FunctionKey)!)))
+    case kVK_F12:
+      return ("F12", String(Character(UnicodeScalar(NSF12FunctionKey)!)))
+    // Home/End/Page
+    case kVK_Home:
+      return ("↖", String(Character(UnicodeScalar(NSHomeFunctionKey)!)))
+    case kVK_End:
+      return ("↘", String(Character(UnicodeScalar(NSEndFunctionKey)!)))
+    case kVK_PageUp:
+      return ("⇞", String(Character(UnicodeScalar(NSPageUpFunctionKey)!)))
+    case kVK_PageDown:
+      return ("⇟", String(Character(UnicodeScalar(NSPageDownFunctionKey)!)))
+    default:
+      return nil
     }
   }
 

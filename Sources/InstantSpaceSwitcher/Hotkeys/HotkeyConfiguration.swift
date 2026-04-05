@@ -23,7 +23,7 @@ struct HotkeyCombination: Codable, Equatable {
   }
 
   var isValid: Bool {
-    modifiers != 0 && !displayKey.isEmpty
+    !displayKey.isEmpty
   }
 
   static let defaultLeft = HotkeyCombination(
@@ -106,8 +106,6 @@ struct HotkeyCombination: Codable, Equatable {
 
   static func from(event: NSEvent) -> HotkeyCombination? {
     let modifiers = event.modifierFlags.carbonMask
-    guard modifiers != 0 else { return nil }
-
     let keyCode = UInt32(event.keyCode)
     
     // Handle arrow keys

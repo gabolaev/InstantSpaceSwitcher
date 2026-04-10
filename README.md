@@ -16,6 +16,13 @@ A simple CLI is provided (`InstantSpaceSwitcher.app/Contents/MacOS/ISSCli --help
 
 ## Installation
 
+#### Homebrew
+
+```sh
+brew tap jurplel/tap
+brew install --cask instant-space-switcher
+```
+
 #### Downloads
 
 Pre-built binaries are available through Github Releases [here](https://github.com/jurplel/InstantSpaceSwitcher/tags).

@@ -94,7 +94,15 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
   @objc private func openAbout(_ sender: Any?) {
     NSApp.activate(ignoringOtherApps: true)
-    NSApp.orderFrontStandardAboutPanel(sender)
+
+    var options: [NSApplication.AboutPanelOptionKey: Any] = [:]
+
+    if let gitHash = Bundle.main.object(forInfoDictionaryKey: "GitCommitHash") as? String {
+      let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
+      options[.version] = "\(version) (\(gitHash))"
+    }
+
+    NSApp.orderFrontStandardAboutPanel(options: options)
     // Ensure window comes to front if already open
     NSApp.windows.first(where: { $0.title.contains("About") })?.makeKeyAndOrderFront(nil)
   }

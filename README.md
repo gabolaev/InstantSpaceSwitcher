@@ -20,5 +20,5 @@ Pre-built binaries are available through Github Releases [here](https://github.c
 ```sh
 git clone https://github.com/jurplel/InstantSpaceSwitcher
 cd InstantSpaceSwitcher
-./build.sh
+./dist/build.sh
 ```

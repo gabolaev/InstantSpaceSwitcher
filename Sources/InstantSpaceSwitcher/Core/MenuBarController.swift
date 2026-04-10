@@ -98,8 +98,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     var options: [NSApplication.AboutPanelOptionKey: Any] = [:]
 
     if let gitHash = Bundle.main.object(forInfoDictionaryKey: "GitCommitHash") as? String {
-      let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0"
-      options[.version] = "\(version) (\(gitHash))"
+      options[.version] = "\(gitHash)"
     }
 
     NSApp.orderFrontStandardAboutPanel(options: options)

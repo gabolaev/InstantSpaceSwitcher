@@ -244,6 +244,24 @@ enum HotkeyIdentifier: String, CaseIterable {
   case space1, space2, space3, space4, space5
   case space6, space7, space8, space9, space10
   case lastSpace
+  
+  var displayName: String {
+    switch self {
+    case .left: return "Switch to space on the left"
+    case .right: return "Switch to space on the right"
+    case .space1: return "Switch to space 1"
+    case .space2: return "Switch to space 2"
+    case .space3: return "Switch to space 3"
+    case .space4: return "Switch to space 4"
+    case .space5: return "Switch to space 5"
+    case .space6: return "Switch to space 6"
+    case .space7: return "Switch to space 7"
+    case .space8: return "Switch to space 8"
+    case .space9: return "Switch to space 9"
+    case .space10: return "Switch to space 10"
+    case .lastSpace: return "Switch to last used space"
+    }
+  }
 }
 
 final class HotkeyStore: ObservableObject {

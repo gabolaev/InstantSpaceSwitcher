@@ -83,47 +83,14 @@ final class KeyboardShortcutsViewController: NSViewController {
   }
 
   private func loadShortcuts() {
-    shortcuts = [
+    shortcuts = HotkeyIdentifier.allCases.map { id in
       ShortcutRow(
-        identifier: .left, name: "Switch to space on the left", combination: store.leftHotkey,
-        isEnabled: store.isEnabled(.left)),
-      ShortcutRow(
-        identifier: .right, name: "Switch to space on the right", combination: store.rightHotkey,
-        isEnabled: store.isEnabled(.right)),
-      ShortcutRow(
-        identifier: .space1, name: "Switch to space 1", combination: store.space1Hotkey,
-        isEnabled: store.isEnabled(.space1)),
-      ShortcutRow(
-        identifier: .space2, name: "Switch to space 2", combination: store.space2Hotkey,
-        isEnabled: store.isEnabled(.space2)),
-      ShortcutRow(
-        identifier: .space3, name: "Switch to space 3", combination: store.space3Hotkey,
-        isEnabled: store.isEnabled(.space3)),
-      ShortcutRow(
-        identifier: .space4, name: "Switch to space 4", combination: store.space4Hotkey,
-        isEnabled: store.isEnabled(.space4)),
-      ShortcutRow(
-        identifier: .space5, name: "Switch to space 5", combination: store.space5Hotkey,
-        isEnabled: store.isEnabled(.space5)),
-      ShortcutRow(
-        identifier: .space6, name: "Switch to space 6", combination: store.space6Hotkey,
-        isEnabled: store.isEnabled(.space6)),
-      ShortcutRow(
-        identifier: .space7, name: "Switch to space 7", combination: store.space7Hotkey,
-        isEnabled: store.isEnabled(.space7)),
-      ShortcutRow(
-        identifier: .space8, name: "Switch to space 8", combination: store.space8Hotkey,
-        isEnabled: store.isEnabled(.space8)),
-      ShortcutRow(
-        identifier: .space9, name: "Switch to space 9", combination: store.space9Hotkey,
-        isEnabled: store.isEnabled(.space9)),
-      ShortcutRow(
-        identifier: .space10, name: "Switch to space 10", combination: store.space10Hotkey,
-        isEnabled: store.isEnabled(.space10)),
-      ShortcutRow(
-        identifier: .lastSpace, name: "Switch to Last Used Space", combination: store.spaceLastSpaceHotkey,
-        isEnabled: store.isEnabled(.lastSpace))
-    ]
+        identifier: id,
+        name: id.displayName,
+        combination: store.combination(for: id),
+        isEnabled: store.isEnabled(id)
+      )
+    }
     tableView.reloadData()
   }
 

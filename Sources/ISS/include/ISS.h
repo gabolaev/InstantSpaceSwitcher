@@ -61,4 +61,25 @@ bool iss_can_move(ISSSpaceInfo info, ISSDirection direction);
  */
 bool iss_switch_to_index(unsigned int targetIndex);
 
+/**
+ * @brief Enables or disables interception of trackpad 3-finger swipe gestures.
+ *
+ * When enabled, native horizontal dock-swipe gestures are suppressed and
+ * replaced with instant space switches (no sliding animation).
+ * @param enabled true to intercept, false to pass gestures through normally.
+ */
+void iss_set_swipe_override(bool enabled);
+
+/**
+ * @brief Callback invoked after a swipe-override switch succeeds.
+ * @param targetIndex Zero-based index of the space that was switched to.
+ */
+typedef void (*ISSSwipeHandler)(unsigned int targetIndex);
+
+/**
+ * @brief Registers a handler called after each successful swipe-override switch.
+ * @param handler Function pointer, or NULL to clear.
+ */
+void iss_set_swipe_handler(ISSSwipeHandler handler);
+
 #endif /* ISS_h */

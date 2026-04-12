@@ -57,6 +57,17 @@ extern CGSSpaceID CGSGetActiveSpace(CGSConnectionID connection) __attribute__((w
 static CFMachPortRef globalTap = NULL;
 static CFRunLoopSourceRef globalSource = NULL;
 
+// Swipe override state
+static bool swipeOverrideEnabled = false;
+static bool swipeTracking = false;
+static bool swipeFired = false;
+
+// Number of our own synthetic events to pass through the tap without re-intercepting.
+// Incremented by iss_post_switch_gesture, decremented by the callback.
+static int passthrough_count = 0;
+
+static ISSSwipeHandler swipeHandler = NULL;
+
 static bool extract_space_info_from_display(CFDictionaryRef displayDict,
                                             CGSSpaceID activeSpace,
                                             bool hasActiveSpace,
@@ -66,12 +77,116 @@ static bool iss_post_switch_gesture(ISSDirection direction);
 static bool iss_switch_with_info(const ISSSpaceInfo *info, ISSDirection direction);
 static bool iss_should_block_switch(const ISSSpaceInfo *info, ISSDirection direction);
 
-// Event tap callback (required but can be empty)
-static CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, 
+// Perform a swipe-override switch: get space info, compute target, switch,
+// and notify the handler with the target index.
+static void swipe_override_switch(ISSDirection dir) {
+    ISSSpaceInfo info;
+    if (!iss_get_space_info(&info)) {
+        iss_post_switch_gesture(dir);
+        return;
+    }
+
+    unsigned int target;
+    if (dir == ISSDirectionLeft) {
+        target = info.currentIndex > 0 ? info.currentIndex - 1 : info.currentIndex;
+    } else {
+        target = info.currentIndex + 1 < info.spaceCount
+            ? info.currentIndex + 1 : info.currentIndex;
+    }
+
+    if (iss_switch_with_info(&info, dir) && swipeHandler) {
+        swipeHandler(target);
+    }
+}
+
+static CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type,
                                    CGEventRef event, void *refcon) {
     (void)proxy;
-    (void)type;
     (void)refcon;
+
+    // Re-enable if the system disabled our tap for being too slow
+    if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
+        if (globalTap) CGEventTapEnable(globalTap, true);
+        return event;
+    }
+
+    if (!swipeOverrideEnabled) return event;
+
+    CGSEventType eventType =
+        (CGSEventType)CGEventGetIntegerValueField(event, kCGSEventTypeField);
+
+    // Pass through our own synthetic events (counted, not tagged — tags don't
+    // survive CGEventPost).
+    if (passthrough_count > 0
+        && (eventType == kCGSEventDockControl || eventType == kCGSEventGesture)) {
+        passthrough_count--;
+        return event;
+    }
+
+    if (eventType == kCGSEventDockControl) {
+        uint32_t hidType =
+            (uint32_t)CGEventGetIntegerValueField(event, kCGEventGestureHIDType);
+        if (hidType != kIOHIDEventTypeDockSwipe) return event;
+
+        uint16_t motion =
+            (uint16_t)CGEventGetIntegerValueField(event, kCGEventGestureSwipeMotion);
+        if (motion != kCGGestureMotionHorizontal) return event;
+
+        CGSGesturePhase phase =
+            (CGSGesturePhase)CGEventGetIntegerValueField(event, kCGEventGesturePhase);
+
+        switch (phase) {
+        case kCGSGesturePhaseBegan:
+            swipeTracking = true;
+            swipeFired = false;
+            return NULL;
+
+        case kCGSGesturePhaseChanged: {
+            if (!swipeTracking) return event;
+            if (!swipeFired) {
+                double progress =
+                    CGEventGetDoubleValueField(event, kCGEventGestureSwipeProgress);
+                if (progress != 0.0) {
+                    ISSDirection dir =
+                        progress > 0 ? ISSDirectionRight : ISSDirectionLeft;
+                    swipeFired = true;
+                    swipe_override_switch(dir);
+                }
+            }
+            return NULL;
+        }
+
+        case kCGSGesturePhaseEnded: {
+            if (!swipeTracking) return event;
+            if (!swipeFired) {
+                double velocity =
+                    CGEventGetDoubleValueField(event, kCGEventGestureSwipeVelocityX);
+                if (velocity != 0.0) {
+                    ISSDirection dir =
+                        velocity > 0 ? ISSDirectionRight : ISSDirectionLeft;
+                    swipe_override_switch(dir);
+                }
+            }
+            swipeTracking = false;
+            swipeFired = false;
+            return NULL;
+        }
+
+        case kCGSGesturePhaseCancelled:
+            swipeTracking = false;
+            swipeFired = false;
+            return NULL;
+
+        default:
+            return swipeTracking ? NULL : event;
+        }
+    }
+
+    // Suppress companion gesture events during active swipe tracking
+    if (eventType == kCGSEventGesture && swipeTracking) {
+        return NULL;
+    }
+
     return event;
 }
 
@@ -305,6 +420,7 @@ static bool iss_post_switch_gesture(ISSDirection direction) {
     // Cannot explain this
     CGEventSetDoubleValueField(evB, kCGEventGestureZoomDeltaX, FLT_TRUE_MIN);
 
+    passthrough_count += 4; // 2 pairs × (evA + evB)
     CGEventPost(kCGSessionEventTap, evB);
     CGEventPost(kCGSessionEventTap, evA);
     CFRelease(evA);
@@ -349,7 +465,8 @@ bool iss_init(void) {
         return true;
     }
 
-    CGEventMask mask = CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp);
+    CGEventMask mask = CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp)
+        | (1ULL << kCGSEventGesture) | (1ULL << kCGSEventDockControl);
     globalTap = CGEventTapCreate(
         kCGSessionEventTap,
         kCGHeadInsertEventTap,
@@ -450,4 +567,16 @@ bool iss_switch_to_index(unsigned int targetIndex) {
     }
 
     return !outOfBounds;
+}
+
+void iss_set_swipe_override(bool enabled) {
+    swipeOverrideEnabled = enabled;
+    if (!enabled) {
+        swipeTracking = false;
+        swipeFired = false;
+    }
+}
+
+void iss_set_swipe_handler(ISSSwipeHandler handler) {
+    swipeHandler = handler;
 }

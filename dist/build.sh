@@ -21,9 +21,26 @@ fi
 BUILD_PATH="${BUILD_DIR}/${BUILD_CONFIG}"
 APP_BUNDLE="${BUILD_DIR}/${PRODUCT_NAME}.app"
 
-# --disable-sandbox: Allows SPM to access files outside the package directory during build
-# (required for building C modules that may reference system frameworks)
-swift build -c "${BUILD_CONFIG}" --build-path "${BUILD_DIR}" --disable-sandbox
+# Build for arm64
+echo "Building for arm64..."
+swift build -c "${BUILD_CONFIG}" --arch arm64 --build-path "${BUILD_DIR}/arm64" --disable-sandbox
+
+echo ""
+echo "Building for x86_64..."
+swift build -c "${BUILD_CONFIG}" --arch x86_64 --build-path "${BUILD_DIR}/x86_64" --disable-sandbox
+
+echo ""
+echo "Creating universal binaries..."
+mkdir -p "${BUILD_PATH}"
+lipo -create \
+  "${BUILD_DIR}/arm64/${BUILD_CONFIG}/${PRODUCT_NAME}" \
+  "${BUILD_DIR}/x86_64/${BUILD_CONFIG}/${PRODUCT_NAME}" \
+  -output "${BUILD_PATH}/${PRODUCT_NAME}"
+
+lipo -create \
+  "${BUILD_DIR}/arm64/${BUILD_CONFIG}/ISSCli" \
+  "${BUILD_DIR}/x86_64/${BUILD_CONFIG}/ISSCli" \
+  -output "${BUILD_PATH}/ISSCli"
 
 echo ""
 echo "Bundling..."

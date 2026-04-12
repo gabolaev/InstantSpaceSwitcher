@@ -8,7 +8,7 @@ final class GeneralSettingsViewController: NSViewController {
   private let osdDurationPopup = NSPopUpButton()
   private let osdDurationLabel = NSTextField(labelWithString: "Duration:")
   private let swipeOverrideCheckbox = NSButton(
-    checkboxWithTitle: "Override 3-finger swipe for instant switching", target: nil, action: nil)
+    checkboxWithTitle: "Override swipe gesture for instant switching", target: nil, action: nil)
   private let launchAtLoginCheckbox = NSButton(
     checkboxWithTitle: "Launch at login", target: nil, action: nil)
 

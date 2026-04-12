@@ -62,7 +62,7 @@ bool iss_can_move(ISSSpaceInfo info, ISSDirection direction);
 bool iss_switch_to_index(unsigned int targetIndex);
 
 /**
- * @brief Enables or disables interception of trackpad 3-finger swipe gestures.
+ * @brief Enables or disables interception of trackpad horizontal swipe gestures.
  *
  * When enabled, native horizontal dock-swipe gestures are suppressed and
  * replaced with instant space switches (no sliding animation).

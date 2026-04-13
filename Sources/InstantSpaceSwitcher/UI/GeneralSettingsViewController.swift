@@ -8,7 +8,7 @@ final class GeneralSettingsViewController: NSViewController {
   private let osdDurationPopup = NSPopUpButton()
   private let osdDurationLabel = NSTextField(labelWithString: "Duration:")
   private let overlayDetectionCheckbox = NSButton(
-    checkboxWithTitle: "Enable Mission Control/Exposé detection", target: nil, action: nil)
+    checkboxWithTitle: "Enable Mission Control/Exposé detection (experimental)", target: nil, action: nil)
   private let showOSDInMissionControlCheckbox = NSButton(
     checkboxWithTitle: "Show on-screen display in Mission Control", target: nil, action: nil)
   private let swipeOverrideCheckbox = NSButton(

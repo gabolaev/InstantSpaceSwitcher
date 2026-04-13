@@ -400,7 +400,7 @@ static bool iss_post_dock_swipe(CGSGesturePhase phase, ISSDirection direction) {
     memcpy(&flagBits, &flagsProgress, sizeof(flagBits));
 
     // Velocity of gesture, very high
-    const double velocityX = isRight ? 400.0 : -400.0;
+    const double velocityX = isRight ? 1200.0 : -1200.0;
 
     CGEventRef evA = CGEventCreate(NULL);
     if (!evA) {

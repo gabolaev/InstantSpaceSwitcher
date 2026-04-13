@@ -111,4 +111,10 @@ bool iss_is_mission_control_active(void);
  */
 void iss_set_overlay_detection_enabled(bool enabled);
 
+/**
+ * @brief Sets the gesture speed for swipe override
+ * @param speed The velocity value for the gesture
+ */
+void iss_set_gesture_speed(double speed);
+
 #endif /* _ISS_H */

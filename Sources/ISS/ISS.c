@@ -67,6 +67,9 @@ static bool swipeOverrideEnabled = false;
 static bool swipeTracking = false;
 static bool swipeFired = false;
 
+// Gesture speed state
+static double gestureSpeed = 999999.0;
+
 static ISSSwitchCallback switchCallback = NULL;
 
 // Optimistic space index: updated on every gesture we fire so bounds checks
@@ -80,7 +83,7 @@ static bool extract_space_info_from_display(CFDictionaryRef displayDict,
                                             bool hasActiveSpace,
                                             ISSSpaceInfo *outInfo);
 static bool load_space_info_for_display(ISSSpaceInfo *info, bool useCursorDisplay);
-static bool iss_perform_switch_gesture(ISSDirection direction);
+static bool iss_perform_switch_gesture(ISSDirection direction, double velocity);
 static bool iss_switch_with_info(const ISSSpaceInfo *info, ISSDirection direction);
 static bool iss_should_block_switch(const ISSSpaceInfo *info, ISSDirection direction);
 
@@ -89,7 +92,7 @@ static bool iss_should_block_switch(const ISSSpaceInfo *info, ISSDirection direc
 static void swipe_override_switch(ISSDirection dir) {
     ISSSpaceInfo info;
     if (!iss_get_space_info(&info)) {
-        iss_perform_switch_gesture(dir);
+        iss_perform_switch_gesture(dir, gestureSpeed);
         return;
     }
 
@@ -390,7 +393,7 @@ bool iss_can_move(ISSSpaceInfo info, ISSDirection direction) {
     return !iss_should_block_switch(&info, direction);
 }
 
-static bool iss_post_dock_swipe(CGSGesturePhase phase, ISSDirection direction) {
+static bool iss_post_dock_swipe(CGSGesturePhase phase, ISSDirection direction, double velocity) {
     const bool isRight = (direction == ISSDirectionRight);
 
     // Empirically, ±FLT_TRUE_MIN used in this way makes switching instant.
@@ -399,8 +402,8 @@ static bool iss_post_dock_swipe(CGSGesturePhase phase, ISSDirection direction) {
     int32_t flagBits;
     memcpy(&flagBits, &flagsProgress, sizeof(flagBits));
 
-    // Velocity of gesture, very high
-    const double velocityX = isRight ? 1200.0 : -1200.0;
+    // Velocity of gesture based on speed setting
+    const double velocityX = isRight ? velocity : -velocity;
 
     CGEventRef evA = CGEventCreate(NULL);
     if (!evA) {
@@ -430,12 +433,12 @@ static bool iss_post_dock_swipe(CGSGesturePhase phase, ISSDirection direction) {
     return true;
 }
 
-static bool iss_perform_switch_gesture(ISSDirection direction) {
+static bool iss_perform_switch_gesture(ISSDirection direction, double velocity) {
     // Send three gesture events--began, changed, and ended
     // If we only send two then mission control doesn't work.
-    return iss_post_dock_swipe(kCGSGesturePhaseBegan,   direction)
-        && iss_post_dock_swipe(kCGSGesturePhaseChanged, direction)
-        && iss_post_dock_swipe(kCGSGesturePhaseEnded,   direction);
+    return iss_post_dock_swipe(kCGSGesturePhaseBegan,   direction, velocity)
+        && iss_post_dock_swipe(kCGSGesturePhaseChanged, direction, velocity)
+        && iss_post_dock_swipe(kCGSGesturePhaseEnded,   direction, velocity);
 }
 
 /** @brief Walks a CGWindowListCopyWindowInfo result
@@ -578,7 +581,7 @@ static bool iss_switch_with_info(const ISSSpaceInfo *info, ISSDirection directio
     if (iss_should_block_switch(info, direction)) {
         return false;
     }
-    if (!iss_perform_switch_gesture(direction)) {
+    if (!iss_perform_switch_gesture(direction, gestureSpeed)) {
         return false;
     }
 
@@ -598,7 +601,7 @@ bool iss_switch(ISSDirection direction) {
         return true;
     }
 
-    return iss_perform_switch_gesture(direction);
+    return iss_perform_switch_gesture(direction, gestureSpeed);
 }
 
 bool iss_switch_to_index(unsigned int targetIndex) {
@@ -623,8 +626,11 @@ bool iss_switch_to_index(unsigned int targetIndex) {
     ISSDirection direction = currentIndex < targetIndex ? ISSDirectionRight : ISSDirectionLeft;
     unsigned int steps = direction == ISSDirectionRight ? (targetIndex - currentIndex) : (currentIndex - targetIndex);
 
+    // Multiply velocity by number of steps for faster multi-space switching
+    double velocity = gestureSpeed * steps;
+
     for (unsigned int i = 0; i < steps; i++) {
-        if (!iss_perform_switch_gesture(direction)) {
+        if (!iss_perform_switch_gesture(direction, velocity)) {
             return false;
         }
     }
@@ -641,6 +647,10 @@ void iss_set_swipe_override(bool enabled) {
         swipeTracking = false;
         swipeFired = false;
     }
+}
+
+void iss_set_gesture_speed(double speed) {
+    gestureSpeed = speed;
 }
 
 void iss_on_space_changed(void) {

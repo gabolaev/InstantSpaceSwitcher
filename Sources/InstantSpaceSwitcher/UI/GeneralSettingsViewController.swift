@@ -12,16 +12,21 @@ final class GeneralSettingsViewController: NSViewController {
   private let showOSDInMissionControlCheckbox = NSButton(
     checkboxWithTitle: "Show on-screen display in Mission Control", target: nil, action: nil)
   private let swipeOverrideCheckbox = NSButton(
-    checkboxWithTitle: "Override swipe gesture for instant switching", target: nil, action: nil)
+    checkboxWithTitle: "Override swipe gesture", target: nil, action: nil)
+  private let animationSpeedPopup = NSPopUpButton()
+  private let animationSpeedLabel = NSTextField(labelWithString: "Animation Speed:")
+  private let customSpeedTextField = NSTextField()
   private let launchAtLoginCheckbox = NSButton(
     checkboxWithTitle: "Launch at login", target: nil, action: nil)
 
   private let durationPresets = [100, 200, 300, 500, 750, 1000]
+  private let animationSpeedOptions = ["Normal", "Fast", "Faster", "Fastest", "Instant", "Custom"]
+  private let animationSpeedValues: [Double] = [40.0, 50.0, 60.0, 80.0, 999999.0]
 
   private let defaults = UserDefaults.standard
 
   override func loadView() {
-    view = NSView(frame: NSRect(x: 0, y: 0, width: 500, height: 300))
+    view = NSView(frame: NSRect(x: 0, y: 0, width: 500, height: 350))
   }
 
   override func viewDidLoad() {
@@ -65,6 +70,24 @@ final class GeneralSettingsViewController: NSViewController {
     swipeOverrideCheckbox.target = self
     swipeOverrideCheckbox.action = #selector(swipeOverrideChanged)
 
+    for speed in animationSpeedOptions {
+      animationSpeedPopup.addItem(withTitle: speed)
+    }
+    animationSpeedPopup.target = self
+    animationSpeedPopup.action = #selector(animationSpeedChanged)
+
+    customSpeedTextField.placeholderString = "Enter velocity (e.g. 60)"
+    customSpeedTextField.target = self
+    customSpeedTextField.action = #selector(customSpeedChanged)
+    customSpeedTextField.widthAnchor.constraint(equalToConstant: 100).isActive = true
+
+    let animationSpeedContainer = NSStackView()
+    animationSpeedContainer.orientation = .horizontal
+    animationSpeedContainer.spacing = 8
+    animationSpeedContainer.addArrangedSubview(animationSpeedLabel)
+    animationSpeedContainer.addArrangedSubview(animationSpeedPopup)
+    animationSpeedContainer.addArrangedSubview(customSpeedTextField)
+
     launchAtLoginCheckbox.target = self
     launchAtLoginCheckbox.action = #selector(launchAtLoginChanged)
 
@@ -73,8 +96,13 @@ final class GeneralSettingsViewController: NSViewController {
     stackView.addArrangedSubview(osdDurationContainer)
     stackView.addArrangedSubview(overlayDetectionCheckbox)
     stackView.addArrangedSubview(showOSDInMissionControlCheckbox)
-    stackView.addArrangedSubview(swipeOverrideCheckbox)
     stackView.addArrangedSubview(launchAtLoginCheckbox)
+
+    let animationLabel = NSTextField(labelWithString: "Animation")
+    animationLabel.font = NSFont.boldSystemFont(ofSize: 13)
+    stackView.addArrangedSubview(animationLabel)
+    stackView.addArrangedSubview(swipeOverrideCheckbox)
+    stackView.addArrangedSubview(animationSpeedContainer)
 
     view.addSubview(stackView)
 
@@ -103,6 +131,21 @@ final class GeneralSettingsViewController: NSViewController {
     showOSDInMissionControlCheckbox.state = defaults.bool(forKey: "showOSDInMissionControl") ? .on : .off
 
     swipeOverrideCheckbox.state = defaults.bool(forKey: "swipeOverride") ? .on : .off
+
+    let animationSpeedValue = defaults.double(forKey: "gestureSpeed")
+    if animationSpeedValue > 0 {
+      // Check if it matches one of the preset values
+      if let index = animationSpeedValues.firstIndex(where: { $0 == animationSpeedValue }) {
+        animationSpeedPopup.selectItem(at: index)
+      } else {
+        // Custom value
+        animationSpeedPopup.selectItem(at: 5)
+        customSpeedTextField.stringValue = "\(animationSpeedValue)"
+      }
+    } else {
+      animationSpeedPopup.selectItem(at: 4) // Default to Instant
+    }
+    updateCustomSpeedTextFieldVisibility()
 
     launchAtLoginCheckbox.state = SMAppService.mainApp.status == .enabled ? .on : .off
   }
@@ -138,6 +181,35 @@ final class GeneralSettingsViewController: NSViewController {
     let isEnabled = sender.state == .on
     defaults.set(isEnabled, forKey: "swipeOverride")
     iss_set_swipe_override(isEnabled)
+  }
+
+  @objc private func animationSpeedChanged(_ sender: NSPopUpButton) {
+    let index = sender.indexOfSelectedItem
+    guard index >= 0 && index < animationSpeedOptions.count else { return }
+    updateCustomSpeedTextFieldVisibility()
+
+    var velocity: Double
+    if index < animationSpeedValues.count {
+      velocity = animationSpeedValues[index]
+    } else if index == 5, let customValue = Double(customSpeedTextField.stringValue), customValue > 0 {
+      velocity = customValue
+    } else {
+      velocity = 1200.0 // Default to Instant
+    }
+
+    defaults.set(velocity, forKey: "gestureSpeed")
+    iss_set_gesture_speed(velocity)
+  }
+
+  @objc private func customSpeedChanged(_ sender: NSTextField) {
+    guard let customValue = Double(sender.stringValue), customValue > 0 else { return }
+    defaults.set(customValue, forKey: "gestureSpeed")
+    iss_set_gesture_speed(customValue)
+  }
+
+  private func updateCustomSpeedTextFieldVisibility() {
+    let isCustom = animationSpeedPopup.indexOfSelectedItem == 5
+    customSpeedTextField.isHidden = !isCustom
   }
 
   @objc private func launchAtLoginChanged(_ sender: NSButton) {
